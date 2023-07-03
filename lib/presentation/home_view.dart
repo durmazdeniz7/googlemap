@@ -83,6 +83,7 @@ import 'package:assesment_map/logic/bloc/marker_bloc.dart';
 import 'package:assesment_map/presentation/widget/map_button.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_polyline_points/flutter_polyline_points.dart';
 import 'package:geolocator/geolocator.dart';
 import 'package:google_maps_flutter/google_maps_flutter.dart';
 
@@ -95,7 +96,10 @@ class HomeView extends StatefulWidget {
 
 class _HomeViewState extends State<HomeView> {
   late GoogleMapController mapController;
+  LatLng userLocation = const LatLng(0.0, 0.0);
 
+  List<LatLng> polylineCoordinates = [];
+  PolylinePoints polylinePoints = PolylinePoints();
   @override
   void initState() {
     super.initState();
@@ -123,13 +127,14 @@ class _HomeViewState extends State<HomeView> {
           const SizedBox(height: 10),
           MapButton(
             onTap: () async {
-              await mapController.animateCamera(CameraUpdate.zoomOut());
+              // await mapController.animateCamera(CameraUpdate.zoomOut());
+              _showRoute(const LatLng(39.929182170636686, 32.702683272193916), const LatLng(41.015137, 28.979530));
             },
             icon: Icons.remove,
           ),
           const SizedBox(height: 10),
           MapButton(
-            onTap: _getCurrentLocation,
+            onTap: _getLocation,
             icon: Icons.my_location,
           ),
         ],
@@ -143,20 +148,27 @@ class _HomeViewState extends State<HomeView> {
 
               for (var element in state.markers) {
                 markers.add(Marker(
-                    infoWindow: const InfoWindow(title: "ndaln"),
+                    infoWindow: InfoWindow(title: element.description),
                     icon: BitmapDescriptor.fromBytes(state.bytes),
                     markerId: MarkerId(element.id.toString()),
                     position: LatLng(double.parse(element.lat!), double.parse(element.long!))));
               }
               return GoogleMap(
-                compassEnabled: true,
+                polylines: {
+                  Polyline(
+                    polylineId: const PolylineId('route'),
+                    color: Colors.red,
+                    width: 3,
+                    points: polylineCoordinates,
+                  ),
+                },
                 markers: markers,
                 myLocationEnabled: true,
                 myLocationButtonEnabled: false,
                 mapType: MapType.normal,
                 zoomGesturesEnabled: true,
                 zoomControlsEnabled: false,
-                initialCameraPosition: const CameraPosition(target: LatLng(0, 0)),
+                initialCameraPosition: const CameraPosition(target: LatLng(39.91987, 32.85427), zoom: 14),
                 onMapCreated: (controller) {
                   mapController = controller;
                 },
@@ -171,14 +183,33 @@ class _HomeViewState extends State<HomeView> {
     );
   }
 
-  void _getCurrentLocation() async {
+  void _getLocation() async {
     final location = await getUserCurrentLocation();
 
     CameraPosition cameraPosition = CameraPosition(
       target: LatLng(location.latitude, location.longitude),
       zoom: 14,
     );
-    await mapController.animateCamera(CameraUpdate.newCameraPosition(cameraPosition));
+    mapController.animateCamera(CameraUpdate.newCameraPosition(cameraPosition));
     setState(() {});
+  }
+
+  void _showRoute(LatLng origin, LatLng destination) async {
+    PolylineResult result = await polylinePoints.getRouteBetweenCoordinates(
+      'AIzaSyCV-VQCqb2JQuUbFfw7k3VmfN7bD3hmdaE',
+      PointLatLng(origin.latitude, origin.longitude),
+      PointLatLng(destination.latitude, destination.longitude),
+
+      // destination.longitude,
+    );
+
+    if (result.points.isNotEmpty) {
+      setState(() {
+        polylineCoordinates.clear();
+        for (var point in result.points) {
+          polylineCoordinates.add(LatLng(point.latitude, point.longitude));
+        }
+      });
+    }
   }
 }

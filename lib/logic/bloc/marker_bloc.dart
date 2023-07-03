@@ -13,8 +13,6 @@ class MarkerBloc extends Bloc<MarkerEvent, MarkerState> {
   final DatabaseHelper databaseHelper = DatabaseHelper();
   MarkerBloc() : super(MarkerInitial()) {
     on<GetMarkers>((event, emit) async {
-      ///convert Uint8List
-
       emit(MarkerLoading());
       final markers = await databaseHelper.getMarkers();
       final data = await rootBundle.load('assets/images/pin4.png');
